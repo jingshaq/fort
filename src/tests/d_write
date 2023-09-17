@@ -1,0 +1,30 @@
+use std::mem::size_of;
+use std::alloc::{alloc, dealloc};
+use libc::getpagesize;
+
+fn main() {
+  // 获取页面大小
+  let page_size = getpagesize();
+
+  // 解压数据
+  let compressed_data = vec![1, 2, 3];
+  let decompressed_data = lz4::decompress(compressed_data);
+
+  // 分配内存
+  let mut buf = unsafe {
+    alloc::aligned_alloc(page_size, decompressed_data.len())
+  };
+
+  // 将解压后的数据复制到分配的内存中
+  buf.copy_from_slice(&decompressed_data);
+
+  // 通过 O_DIRECT 方式写入
+  let fd = open("/dev/sda", O_RDWR | O_DIRECT);
+  write(fd, buf, decompressed_data.len());
+  close(fd);
+
+  // 释放内存
+  unsafe {
+    dealloc(buf, decompressed_data.len());
+  }
+}
